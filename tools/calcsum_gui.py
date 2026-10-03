@@ -30,6 +30,16 @@ import time
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 
+# Windows 的控制台默认编码是 cp936 / cp1252，直接 print 中文会 UnicodeEncodeError，
+# 这里强制标准输出走 UTF-8（命令行自检时用得上，界面本身不受影响）。
+for _stream in (sys.stdout, sys.stderr):
+    _reconfigure = getattr(_stream, "reconfigure", None)
+    if _reconfigure is not None:
+        try:
+            _reconfigure(encoding="utf-8", errors="replace")
+        except Exception:                                        # noqa: BLE001
+            pass
+
 APP_TITLE = "固件校验和工具 — SKS3200M 系列"
 APP_VERSION = "1.0"
 
