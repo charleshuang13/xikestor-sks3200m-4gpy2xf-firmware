@@ -460,7 +460,87 @@ class App(tk.Tk):
         self.log.configure(state="disabled")
 
 
+def selftest():
+    """无界面自检：造两个假镜像，验证「校验 → 改坏能发现 → 回写 → 再校验通过」整条链路。
+    不打开窗口，可以在没有桌面的机器（比如 CI）上跑。"""
+    import tempfile
+
+    def build_update():
+        b1 = bytes((i * 7 + 3) & 0xFF for i in range(BLOCK1_LENGTH))
+        b2 = bytes((i * 11 + 5) & 0xFF for i in range(BLOCK2_LENGTH))
+        b3 = bytes((i * 13 + 9) & 0xFF for i in range(1000))
+        length = BLOCK1_LENGTH + BLOCK2_LENGTH + HEADER_LENGTH + len(b3)
+        payload = sum(b1) + sum(b2) + 0xFF * HEADER_LENGTH + sum(b3)
+        hdr = {"magic": HEADER_MAGIC, "length": length, "header_sum": 0,
+               "payload_sum": payload, "reserved": HEADER_RESERVED}
+        hdr["header_sum"] = calc_header_sum(pack_header(hdr))
+        raw = pack_header(hdr)
+        return raw + b1 + b2 + raw + b3
+
+    def build_full():
+        b1 = bytes((i * 3 + 1) & 0xFF for i in range(BLOCK1_LENGTH))
+        b2 = bytes((i * 5 + 2) & 0xFF for i in range(BLOCK2_LENGTH))
+        b3 = bytes((i * 9 + 7) & 0xFF for i in range(600))
+        buf = bytearray(0x1D014 + len(b3))
+        buf[0] = 0x00
+        buf[1] = 0x40
+        buf[0x1002:0x1002 + BLOCK1_LENGTH] = b1
+        buf[0x1C000:0x1C000 + BLOCK2_LENGTH] = b2
+        buf[0x1D014:0x1D014 + len(b3)] = b3
+        length = BLOCK1_LENGTH + BLOCK2_LENGTH + HEADER_LENGTH + len(b3)
+        payload = sum(b1) + sum(b2) + 0xFF * HEADER_LENGTH + sum(b3)
+        hdr = {"magic": HEADER_MAGIC, "length": length, "header_sum": 0,
+               "payload_sum": payload, "reserved": HEADER_RESERVED}
+        hdr["header_sum"] = calc_header_sum(pack_header(hdr))
+        buf[0x1D000:0x1D014] = pack_header(hdr)
+        return bytes(buf)
+
+    results = []
+    for name, data in (("升级包 UPDATE", build_update()), ("整片镜像 FULL", build_full())):
+        with tempfile.TemporaryDirectory() as d:
+            p = os.path.join(d, "selftest.bin")
+            with open(p, "wb") as f:
+                f.write(data)
+
+            r = analyse(p)
+            results.append((name + "：正确的镜像应判为通过", r["verdict"] == "ok", r["verdict"]))
+
+            ba = bytearray(open(p, "rb").read())
+            ba[0x3000] ^= 0x5A                      # 在载荷里改坏一个字节
+            open(p, "wb").write(ba)
+            r = analyse(p)
+            results.append((name + "：改坏一个字节应判为失败", r["verdict"] == "bad", r["verdict"]))
+
+            ok, note, bak = restamp(p, r)
+            results.append((name + "：回写校验和后应重新通过",
+                            ok and analyse(p)["verdict"] == "ok", note))
+
+            with open(p, "rb") as f:
+                fixed = f.read()
+            expect = bytearray(data)
+            expect[0x3000] ^= 0x5A
+            # 回写只应该动 header 那几处，载荷一个字节都不能碰
+            hdr_idx = set()
+            for o in LAYOUT[r["type"]]["headers"]:
+                hdr_idx.update(range(o, o + HEADER_LENGTH))
+            results.append((name + "：回写只改 header，载荷一字节没动",
+                            len(fixed) == len(data)
+                            and any(fixed[i] != data[i] for i in hdr_idx)
+                            and all(fixed[i] == expect[i] for i in range(len(expect))
+                                    if i not in hdr_idx),
+                            "备份 " + os.path.basename(bak)))
+
+    ok_all = True
+    for title, ok, detail in results:
+        print(("通过  " if ok else "失败  ") + title + "  (" + str(detail) + ")")
+        ok_all = ok_all and ok
+    print("自检结果：" + ("全部通过" if ok_all else "有失败项"))
+    return 0 if ok_all else 1
+
+
 def main():
+    if "--selftest" in sys.argv:
+        sys.exit(selftest())
     app = App()
     app.mainloop()
 

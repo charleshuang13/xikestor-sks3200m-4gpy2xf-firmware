@@ -38,7 +38,7 @@ checksums.sha256
 | `firmware/C6_RF_v1.9.1_SKS3200M-4GPY2XF_20240318.bin` | 923,828 | `f581617c35768285aca21a83064a757fc4fbcb16be7ea38f440f913a70552ad1` |
 | `firmware/C6_RF_v1.9.1_SKS3200M-4GPY2XF_20240318_patched.bin` | 923,828 | `e0a6b694015548256b5b55c92c0801d2ec017930da260d3ebf4ad23c89dc9606` |
 | `tools/calcsum.py` | 4,829 | `4effa9105ae6409b7d550054da9507a7e4a60d8c40f500a72c92a53d9f9bfbb2` |
-| `tools/calcsum_gui.py` | 19,062 | `c5f4369a96b783a25f857220be6ecc29fe637f852ac58e9430a110270f026544` |
+| `tools/calcsum_gui.py` | 22,868 | `8665d6ecdad5a6345b3caf7045ca47727279e82a1bf859761d0814ba29a39ecc` | `c5f4369a96b783a25f857220be6ecc29fe637f852ac58e9430a110270f026544` |
 | `tools/run_windows.bat` | 795 | `5f163a07df6ae805aa434d9b03b31b5e77b283c96f75e9e04815fc00df10b9fa` |
 | `tools/build_windows_exe.bat` | 1,193 | `aa5d8145d76a88f4d89d6d305b8ada66c2dcc61b3926cc3e6f5297e136908763` |
 
@@ -121,6 +121,14 @@ python3 tools/calcsum.py -u firmware/....bin                                    
   （用的是 `.github/workflows/build-windows-exe.yml`；推一个 `v*` 标签就会自动出新版本。）
 
 两个版本的算法是同一套，实测把同一个改坏的文件分别用命令行版和图形界面版修正，产出的文件**逐字节相同**。
+
+想确认这个工具本身没坏，可以跑一次无界面自检（不开窗口，只造两个假镜像，验证「校验 → 发现被改坏 → 回写 → 重新通过」这条路）：
+
+```bash
+python3 tools/calcsum_gui.py --selftest
+```
+
+Windows 版的 exe 每次发布前，GitHub 的 Windows 机器上也会自动跑一遍这个自检。
 
 ## Flash 布局（2 MB FM25Q16）
 

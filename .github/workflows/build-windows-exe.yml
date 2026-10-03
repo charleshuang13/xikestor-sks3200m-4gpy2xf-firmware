@@ -25,6 +25,9 @@ jobs:
       - name: 安装 PyInstaller
         run: python -m pip install --upgrade pyinstaller
 
+      - name: 先在 Windows 上跑一遍无界面自检（校验逻辑本身有没有问题）
+        run: python tools/calcsum_gui.py --selftest
+
       - name: 打包成单文件 exe
         run: >
           python -m PyInstaller --onefile --noconsole --clean
