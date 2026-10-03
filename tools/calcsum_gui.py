@@ -302,9 +302,12 @@ class App(tk.Tk):
         detail = ttk.LabelFrame(root, text=" 校验和明细 ", padding=10)
         detail.grid(row=3, column=0, sticky="ew", pady=(10, 0))
         detail.columnconfigure(0, weight=1)
-        self.txt = tk.Text(detail, height=11, wrap="none", bg="#f8f9fa", fg=COLOR_TEXT,
+        self.txt = tk.Text(detail, height=12, wrap="none", bg="#f8f9fa", fg=COLOR_TEXT,
                            relief="flat", font=("Consolas" if sys.platform == "win32" else "Menlo", 11))
         self.txt.grid(row=0, column=0, sticky="ew")
+        vsb = ttk.Scrollbar(detail, orient="vertical", command=self.txt.yview)
+        vsb.grid(row=0, column=1, sticky="ns")
+        self.txt.configure(yscrollcommand=vsb.set)
         self.txt.configure(state="disabled")
 
         # 5) 日志
@@ -342,9 +345,14 @@ class App(tk.Tk):
         self.log.configure(state="disabled")
 
     def set_text(self, lines):
+        """lines 里的元素可以是字符串，也可以是 (文本, 标签) 元组"""
         self.txt.configure(state="normal")
         self.txt.delete("1.0", "end")
-        self.txt.insert("1.0", "\n".join(lines))
+        self.txt.tag_configure("bad", foreground=COLOR_BAD)
+        self.txt.tag_configure("ok", foreground=COLOR_OK)
+        for item in lines:
+            text, tag = item if isinstance(item, tuple) else (item, None)
+            self.txt.insert("end", text + "\n", tag or "")
         self.txt.configure(state="disabled")
 
     def on_browse(self):
@@ -384,27 +392,31 @@ class App(tk.Tk):
         self.lbl_verdict.configure(text=r["message"], fg=color)
 
         lines = []
-        for h in r["headers"]:
-            lines.append("header @ 0x%06X" % h["offset"])
-            lines.append("  magic        : 0x%08X  %s" % (
-                h["magic"], "正常" if h["magic_ok"] else "异常！应为 0x%08X" % HEADER_MAGIC))
-            lines.append("  length       : 0x%08X  (%d 字节)" % (h["length"], h["length"]))
-            lines.append("  reserved     : 0x%08X  %s" % (
-                h["reserved"], "正常" if h["reserved_ok"] else "异常！应为 0x%08X" % HEADER_RESERVED))
-            lines.append("  header_sum   : 文件里 0x%08X   算出来 0x%08X   %s" % (
-                h["header_sum"], h["header_sum_calc"],
-                "一致" if h["header_sum_ok"] else "不一致 ←"))
         if r["payload_calc"] is not None:
             last = r["headers"][-1]
-            lines.append("")
-            lines.append("载荷（block1 %d + block2 %d + header 20x0xFF + block3 %d 字节）"
-                         % r["block_sizes"])
-            lines.append("  payload_sum  : 文件里 0x%08X   算出来 0x%08X   %s" % (
+            lines.append(("载荷校验和（最关键的一项）", None))
+            lines.append(("  文件里 0x%08X    算出来 0x%08X    %s" % (
                 last["payload_sum"], r["payload_calc"],
-                "一致" if r["payload_ok"] else "不一致 ←"))
+                "一致" if r["payload_ok"] else "不一致 ←"), None if r["payload_ok"] else "bad"))
+            lines.append(("  组成：block1 %d + block2 %d + header 20 字节按 0xFF + block3 %d 字节"
+                          % r["block_sizes"], None))
+            lines.append(("", None))
+        for h in r["headers"]:
+            lines.append(("header @ 0x%06X" % h["offset"], None))
+            lines.append(("  magic        : 0x%08X  %s" % (
+                h["magic"], "正常" if h["magic_ok"] else "异常！应为 0x%08X" % HEADER_MAGIC),
+                None if h["magic_ok"] else "bad"))
+            lines.append(("  length       : 0x%08X  (%d 字节)" % (h["length"], h["length"]), None))
+            lines.append(("  reserved     : 0x%08X  %s" % (
+                h["reserved"], "正常" if h["reserved_ok"] else "异常！应为 0x%08X" % HEADER_RESERVED),
+                None if h["reserved_ok"] else "bad"))
+            lines.append(("  header_sum   : 文件里 0x%08X   算出来 0x%08X   %s" % (
+                h["header_sum"], h["header_sum_calc"],
+                "一致" if h["header_sum_ok"] else "不一致 ←"),
+                None if h["header_sum_ok"] else "bad"))
         for n in r["notes"]:
-            lines.append("")
-            lines.append("注意：" + n)
+            lines.append(("", None))
+            lines.append(("注意：" + n, "bad"))
         self.set_text(lines)
 
         for n in r["notes"]:

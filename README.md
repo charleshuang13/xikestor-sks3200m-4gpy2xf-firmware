@@ -27,6 +27,8 @@ docs/
   factory-web-logo.png                                  从 flash 里抠出来的出厂 web logo
 screenshots/
   hex-edit-0xC4418.png                                  十六进制编辑器截图，显示被改的那个字节
+  gui-check-failed.png                                  图形界面版：校验失败的界面
+  gui-check-ok.png                                      图形界面版：校验通过的界面
 checksums.sha256
 ```
 
@@ -38,7 +40,7 @@ checksums.sha256
 | `firmware/C6_RF_v1.9.1_SKS3200M-4GPY2XF_20240318.bin` | 923,828 | `f581617c35768285aca21a83064a757fc4fbcb16be7ea38f440f913a70552ad1` |
 | `firmware/C6_RF_v1.9.1_SKS3200M-4GPY2XF_20240318_patched.bin` | 923,828 | `e0a6b694015548256b5b55c92c0801d2ec017930da260d3ebf4ad23c89dc9606` |
 | `tools/calcsum.py` | 4,829 | `4effa9105ae6409b7d550054da9507a7e4a60d8c40f500a72c92a53d9f9bfbb2` |
-| `tools/calcsum_gui.py` | 22,868 | `8665d6ecdad5a6345b3caf7045ca47727279e82a1bf859761d0814ba29a39ecc` | `c5f4369a96b783a25f857220be6ecc29fe637f852ac58e9430a110270f026544` |
+| `tools/calcsum_gui.py` | 23,688 | `a37e269432e7ebd3f7b3518b9f8cadf526fa877717234647a360c4490aab964c` | `8665d6ecdad5a6345b3caf7045ca47727279e82a1bf859761d0814ba29a39ecc` | `c5f4369a96b783a25f857220be6ecc29fe637f852ac58e9430a110270f026544` |
 | `tools/run_windows.bat` | 795 | `5f163a07df6ae805aa434d9b03b31b5e77b283c96f75e9e04815fc00df10b9fa` |
 | `tools/build_windows_exe.bat` | 1,193 | `aa5d8145d76a88f4d89d6d305b8ada66c2dcc61b3926cc3e6f5297e136908763` |
 
@@ -98,6 +100,12 @@ python3 tools/calcsum.py -u firmware/....bin                                    
 ```
 
 ## 图形界面版（给不想用命令行的朋友）
+
+界面长这样（左边是文件被改坏、校验不通过；右边是正常的官方升级包）：
+
+| 校验失败 | 校验通过 |
+|---|---|
+| ![校验失败](screenshots/gui-check-failed.png) | ![校验通过](screenshots/gui-check-ok.png) |
 
 `tools/calcsum_gui.py` 是同一个校验和工具的图形界面，**只用 Python 自带的 tkinter，不需要 pip 装任何东西**，
 单文件、双击就能开（Windows / macOS / Linux 都一样）：
