@@ -17,7 +17,10 @@ firmware/
   C6_RF_v1.9.1_SKS3200M-4GPY2XF_20240318.bin            官方升级包，V1.9.1
   C6_RF_v1.9.1_SKS3200M-4GPY2XF_20240318_patched.bin    同一个升级包，手工改了 1 个操作码字节
 tools/
-  calcsum.py                                            镜像头和载荷的校验和：验证 / 回写
+  calcsum.py                                            镜像头和载荷的校验和：验证 / 回写（命令行版）
+  calcsum_gui.py                                        同一个功能的图形界面版，只用 Python 自带库，双击即用
+  run_windows.bat                                       Windows 上双击打开图形界面
+  build_windows_exe.bat                                 Windows 上把它打包成独立 exe（对方不用装 Python）
 docs/
   firmware-analysis.md                                  完整分析（设备识别、镜像格式、校验和、flash 地图、改动字节）
   web-ui-and-loader-notes.md                            loader 菜单、uboot 密码提示、cgi 接口表、功能清单、SDK 源码路径
@@ -35,6 +38,9 @@ checksums.sha256
 | `firmware/C6_RF_v1.9.1_SKS3200M-4GPY2XF_20240318.bin` | 923,828 | `f581617c35768285aca21a83064a757fc4fbcb16be7ea38f440f913a70552ad1` |
 | `firmware/C6_RF_v1.9.1_SKS3200M-4GPY2XF_20240318_patched.bin` | 923,828 | `e0a6b694015548256b5b55c92c0801d2ec017930da260d3ebf4ad23c89dc9606` |
 | `tools/calcsum.py` | 4,829 | `4effa9105ae6409b7d550054da9507a7e4a60d8c40f500a72c92a53d9f9bfbb2` |
+| `tools/calcsum_gui.py` | 19,062 | `c5f4369a96b783a25f857220be6ecc29fe637f852ac58e9430a110270f026544` |
+| `tools/run_windows.bat` | 795 | `5f163a07df6ae805aa434d9b03b31b5e77b283c96f75e9e04815fc00df10b9fa` |
+| `tools/build_windows_exe.bat` | 1,193 | `aa5d8145d76a88f4d89d6d305b8ada66c2dcc61b3926cc3e6f5297e136908763` |
 
 MD5：整片 dump `fd83d22ad7d919c6507bbe6b0f17389c`，
 官方升级包 `c2e7bdb2a5b4e7da27d2ac143a60b320`，
@@ -90,6 +96,31 @@ header 是 5 个**大端** uint32：`magic 0x12345678`、`length`、`header_sum`
 python3 tools/calcsum.py firmware/C6_RF_v1.9.1_SKS3200M-4GPY2XF_20240318.bin    # 只校验
 python3 tools/calcsum.py -u firmware/....bin                                     # 校验并回写校验和
 ```
+
+## 图形界面版（给不想用命令行的朋友）
+
+`tools/calcsum_gui.py` 是同一个校验和工具的图形界面，**只用 Python 自带的 tkinter，不需要 pip 装任何东西**，
+单文件、双击就能开（Windows / macOS / Linux 都一样）：
+
+* 点「浏览…」选固件文件，自动开始校验；
+* 结论直接用颜色表示：绿色「校验通过」、红色「校验失败」、橙色「无法识别」；
+* 把 header 里存的值和算出来的值并排列出来（magic / length / header_sum / payload_sum），
+  哪一项对不上一眼就能看到；
+* 文件被改过（比如刷了修改版但忘了重算校验和）时，点「写入校验和」即可修正：
+  **写入前自动生成 `.bak-日期时间` 备份，原文件不会被直接覆盖**，写完还会自动重新校验一遍；
+* 顺便显示推测的固件版本和编译日期，用来分辨手里的文件是 V1.9 还是 V1.9.1。
+
+怎么用：
+
+* 装了 Python 3 的机器：直接双击 `tools/calcsum_gui.py`（Windows 上也可以双击 `tools/run_windows.bat`）；
+* 对方连 Python 都没装：在**任意一台 Windows 机器**上双击 `tools/build_windows_exe.bat`，
+  会在 `dist\` 里生成一个独立的 `FirmwareChecksum.exe`（Python 运行时已经打包进去，对方双击就能用）。
+  PyInstaller 不能跨平台打包，所以 Windows 的 exe 只能在 Windows 上打。
+* 连打包都懒得做：直接到本仓库的 **Releases** 页面下载 `FirmwareChecksum.exe`——
+  那是 GitHub 的 Windows 机器自动打好的，双击就能用，不需要装 Python。
+  （用的是 `.github/workflows/build-windows-exe.yml`；推一个 `v*` 标签就会自动出新版本。）
+
+两个版本的算法是同一套，实测把同一个改坏的文件分别用命令行版和图形界面版修正，产出的文件**逐字节相同**。
 
 ## Flash 布局（2 MB FM25Q16）
 

@@ -1,0 +1,59 @@
+name: 打包 Windows 校验和工具
+
+# 目的：让不会用命令行、也没装 Python 的人，直接下载一个 exe 就能用。
+# 触发方式：① 在 Actions 页面点 “Run workflow”；② 推一个以 v 开头的 tag（会自动发 Release 附上 exe）
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows-exe:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: 安装 PyInstaller
+        run: python -m pip install --upgrade pyinstaller
+
+      - name: 打包成单文件 exe
+        run: >
+          python -m PyInstaller --onefile --noconsole --clean
+          --name FirmwareChecksum
+          --distpath dist --workpath build --specpath build
+          tools/calcsum_gui.py
+
+      - name: 自检（检查 exe 是否真的生成）
+        shell: pwsh
+        run: |
+          if (!(Test-Path "dist/FirmwareChecksum.exe")) { throw "exe 没有生成" }
+          Get-Item "dist/FirmwareChecksum.exe" | Select-Object Name, Length
+
+      - name: 上传为构建产物（需登录 GitHub 才能下载）
+        uses: actions/upload-artifact@v4
+        with:
+          name: FirmwareChecksum-windows
+          path: dist/FirmwareChecksum.exe
+
+      - name: 如果是打 tag，就发一个 Release 把 exe 挂上去（无需登录即可下载）
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" \
+            dist/FirmwareChecksum.exe \
+            --title "固件校验和工具 ${GITHUB_REF_NAME}" \
+            --notes "图形界面版固件校验和工具（Windows 单文件 exe，双击即用，不需要装 Python）：
+          - 校验兮克 SKS3200M 系列镜像的 header / 载荷校验和
+          - 文件被改过时可以把正确的校验和写回 header（写入前自动备份）
+          源码见 tools/calcsum_gui.py。"
